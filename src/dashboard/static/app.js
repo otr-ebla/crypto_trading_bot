@@ -107,19 +107,23 @@ function updateBotUI() {
   const badge = document.getElementById("bot-status-badge");
   const strat = document.getElementById("bot-strategy");
   
-  if (!btn || !badge) return;
+  if (!btn) return;
   
   if (state.bot_status.running) {
     btn.textContent = "⏹ Stop Bot";
     btn.className = "btn-primary stop";
-    badge.textContent = "RUNNING";
-    badge.className = "badge badge-buy";
+    if (badge) {
+      badge.textContent = "RUNNING";
+      badge.className = "badge badge-buy";
+    }
     if (strat) strat.disabled = true;
   } else {
     btn.textContent = "▶ Start Bot";
     btn.className = "btn-primary start";
-    badge.textContent = "STOPPED";
-    badge.className = "badge badge-open";
+    if (badge) {
+      badge.textContent = "STOPPED";
+      badge.className = "badge badge-open";
+    }
     if (strat) strat.disabled = false;
   }
 }
