@@ -285,6 +285,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "timeframe": settings.trading.timeframe,
                 "mode": settings.trading.mode,
                 "exchange": settings.exchange.id,
+                "auth_required": bool(settings.dashboard_token),
             })
 
         elif path == "/api/bot/status":
@@ -303,12 +304,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        # Handle post data
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data) if post_data else {}
+
+        # ── Authorize ──
+        if settings.dashboard_token:
+            token = data.get("token")
+            if token != settings.dashboard_token:
+                logger.warning(f"Dashboard: Unauthorized POST request to {path}")
+                self._json_response({"error": "Unauthorized"}, status=401)
+                return
+
         if path == "/api/bot/start":
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            data = json.loads(post_data) if post_data else {}
             strategy = data.get("strategy", "momentum_sentiment")
-            
             from src.__main__ import get_bot
             msg = get_bot().start(strategy_name=strategy)
             self._json_response({"status": "ok", "message": msg})

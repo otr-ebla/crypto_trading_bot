@@ -20,6 +20,15 @@ const API = "";  // same origin
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
+  // Capture token from URL if present
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  if (token) {
+    sessionStorage.setItem('bot_token', token);
+    // Clean up URL without refreshing
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   setupNavigation();
   setupBotControls();
   await loadConfig();
@@ -72,14 +81,18 @@ function setupBotControls() {
     const isRunning = state.bot_status.running;
     const strategy = document.getElementById("bot-strategy")?.value || "momentum_sentiment";
     const endpoint = isRunning ? "/api/bot/stop" : "/api/bot/start";
+    const token = sessionStorage.getItem('bot_token');
     
     btn.disabled = true;
     try {
-      await fetch(API + endpoint, { 
+      const res = await fetch(API + endpoint, { 
         method: "POST", 
-        body: JSON.stringify({ strategy }),
+        body: JSON.stringify({ strategy, token }),
         headers: { "Content-Type": "application/json" }
       });
+      if (res.status === 401 || res.status === 403) {
+        alert("Unauthorized: Invalid or missing token.");
+      }
       await refreshAll();
     } catch(e) {
       console.error("Bot toggle error:", e);
@@ -154,6 +167,13 @@ async function loadConfig() {
     const badge = document.getElementById("mode-badge");
     badge.textContent = cfg.mode.toUpperCase();
     if (cfg.mode === "live") badge.classList.add("live");
+
+    // Hide controls if auth is required but missing token
+    const token = sessionStorage.getItem('bot_token');
+    const controls = document.querySelector('.bot-controls');
+    if (cfg.auth_required && !token && controls) {
+      controls.style.display = 'none';
+    }
   }
 }
 

@@ -90,6 +90,7 @@ class Settings:
     log_file: str = os.getenv("LOG_FILE", "logs/tradingbot.log")
     dashboard_host: str = os.getenv("DASHBOARD_HOST", "127.0.0.1")
     dashboard_port: int = _int(os.getenv("DASHBOARD_PORT"), 8080)
+    dashboard_token: str = os.getenv("DASHBOARD_TOKEN", "")
 
 
 # Global singleton
