@@ -363,7 +363,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.wfile.write(file_path.read_bytes())
 
     def log_message(self, format, *args):
-        if "/api/" not in (args[0] if args else ""):
+        first_arg = str(args[0]) if args else ""
+        if "/api/" not in first_arg:
             logger.debug(f"Dashboard: {format % args}")
 
 
