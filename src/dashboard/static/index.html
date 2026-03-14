@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoBot — AI Trading Dashboard</title>
+  <meta name="description" content="AI-powered cryptocurrency trading bot dashboard with real-time charts, sentiment analysis, and trade history">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">CryptoBot</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-page="dashboard" id="nav-dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-page="charts" id="nav-charts">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,6 13.5,14.5 8.5,9.5 2,16"/><polyline points="16,6 22,6 22,12"/></svg>
+        Charts
+      </button>
+      <button class="nav-btn" data-page="trades" id="nav-trades">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Trades
+      </button>
+      <button class="nav-btn" data-page="sentiment" id="nav-sentiment">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        Sentiment
+      </button>
+      <button class="nav-btn" data-page="ai" id="nav-ai">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.9 2-2 2h-4a2 2 0 0 1-2-2 4 4 0 0 1 4-4z"/><path d="M12 8v8"/><circle cx="12" cy="20" r="2"/><path d="M8 12h8"/></svg>
+        AI Learning
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="mode-badge" id="mode-badge">PAPER</div>
+      <span class="exchange-name" id="exchange-name">binance</span>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+    <!-- ── TOP BAR ── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 id="page-title">Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <!-- Bot Controls -->
+        <div class="bot-controls">
+          <select id="bot-strategy" class="select-sm">
+            <option value="momentum_sentiment">Momentum + Sentiment</option>
+            <option value="breakout_news">Breakout + News</option>
+          </select>
+          <button id="btn-bot-toggle" class="btn-primary start">▶ Start Bot</button>
+        </div>
+        
+        <div class="ticker-strip" id="ticker-strip"></div>
+        <div class="topbar-status">
+          <span class="pulse-dot"></span>
+          <span id="last-update">Connecting…</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══ PAGES ═══ -->
+
+    <!-- ── DASHBOARD PAGE ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="dashboard-grid">
+        <!-- Left Column -->
+        <div class="dashboard-col-left">
+          <div class="card card-chart">
+            <div class="card-header">
+              <h3>Price Chart</h3>
+              <div class="chart-controls">
+                <select id="dash-chart-symbol" class="select-sm"></select>
+                <select id="dash-chart-tf" class="select-sm">
+                  <option value="1h">1H</option>
+                  <option value="4h">4H</option>
+                  <option value="1d">1D</option>
+                </select>
+              </div>
+            </div>
+            <div class="chart-container" id="dash-chart"></div>
+          </div>
+          
+          <div class="card mt-4">
+            <div class="card-header">
+              <h3>Live Activity Feed</h3>
+              <span class="badge badge-open" id="bot-status-badge">STOPPED</span>
+            </div>
+            <div class="activity-feed" id="activity-feed"></div>
+          </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="dashboard-col-right">
+          <div class="card card-trades full-card">
+            <div class="card-header">
+              <h3>Active Positions</h3>
+              <span class="badge badge-open" id="open-positions-count">0</span>
+            </div>
+            <div class="trades-list" id="dash-open-positions" style="max-height: 200px;"></div>
+          </div>
+          
+          <div class="card card-trades" style="flex: 1;">
+            <div class="card-header">
+              <h3>Recent History</h3>
+              <span class="badge badge-closed" id="recent-history-count">0</span>
+            </div>
+            <div class="trades-list" id="dash-recent-history" style="max-height: 350px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS PAGE ── -->
+    <div class="page" id="page-charts">
+      <div class="card full-card">
+        <div class="card-header">
+          <h3>Trading Chart</h3>
+          <div class="chart-controls">
+            <select id="chart-symbol" class="select-sm"></select>
+            <select id="chart-tf" class="select-sm">
+              <option value="1m">1M</option>
+              <option value="5m">5M</option>
+              <option value="15m">15M</option>
+              <option value="1h" selected>1H</option>
+              <option value="4h">4H</option>
+              <option value="1d">1D</option>
+              <option value="1w">1W</option>
+            </select>
+            <button class="btn-sm" id="chart-refresh">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="chart-container chart-full" id="main-chart"></div>
+      </div>
+    </div>
+
+    <!-- ── TRADES PAGE ── -->
+    <div class="page" id="page-trades">
+      <div class="card full-card">
+        <div class="card-header">
+          <h3>Trade History</h3>
+          <div class="chart-controls">
+            <select id="trade-filter" class="select-sm">
+              <option value="">All</option>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="trades-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Symbol</th><th>Side</th><th>Amount</th>
+                <th>Entry</th><th>Exit</th><th>SL</th><th>TP</th>
+                <th>P&L</th><th>%</th><th>Strategy</th><th>Status</th><th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="trades-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SENTIMENT PAGE ── -->
+    <div class="page" id="page-sentiment">
+      <div class="sentiment-header">
+        <div class="chart-controls">
+          <select id="sentiment-symbol" class="select-sm"></select>
+          <button class="btn-primary" id="fetch-sentiment">🔍 Fetch Live Sentiment</button>
+        </div>
+      </div>
+      <div class="sentiment-grid" id="sentiment-grid">
+        <div class="card sentiment-placeholder">
+          <p>Select a symbol and click <strong>Fetch Live Sentiment</strong> to analyse current news and social media.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AI LEARNING PAGE ── -->
+    <div class="page" id="page-ai">
+      <div class="ai-grid">
+        <div class="card">
+          <div class="card-header"><h3>Signal Weights (Learned)</h3></div>
+          <div id="weights-panel"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Recent Signals</h3></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Symbol</th><th>Source</th><th>Direction</th><th>Confidence</th><th>Correct?</th><th>P&L</th><th>Time</th></tr>
+              </thead>
+              <tbody id="signals-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
