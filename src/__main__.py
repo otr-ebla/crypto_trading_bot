@@ -187,11 +187,18 @@ class BotEngine:
                 f"balance: ${self.executor.balance:,.2f}"
             )
 
-            # Sleep with interruptibility
-            for _ in range(settings.trading.interval_seconds):
+            # Sleep with interruptibility + heartbeat countdown
+            interval = settings.trading.interval_seconds
+            self._log_activity(f"⏱️ Next cycle in {interval}s…", "dim")
+            elapsed = 0
+            while elapsed < interval:
                 if not self._running:
                     break
                 time.sleep(1)
+                elapsed += 1
+                remaining = interval - elapsed
+                if remaining > 0 and remaining % 10 == 0:
+                    self._log_activity(f"⏱️ Next cycle in {remaining}s…", "dim")
 
         logger.info("Trading loop ended")
 
