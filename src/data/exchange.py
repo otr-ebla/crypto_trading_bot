@@ -36,8 +36,13 @@ class ExchangeClient:
         )
 
         if settings.exchange.sandbox:
-            self._exchange.set_sandbox_mode(True)
-            logger.info("Exchange running in [bold yellow]sandbox[/] mode")
+            try:
+                self._exchange.set_sandbox_mode(True)
+                logger.info("Exchange running in [bold yellow]sandbox[/] mode")
+            except ccxt.NotSupported:
+                logger.warning(f"Sandbox mode not supported by {settings.exchange.id}. Falling back to standard API URLs (safe for Paper Trading).")
+            except Exception as e:
+                logger.warning(f"Could not enable sandbox mode: {e}")
 
     # ── Market Data ──────────────────────────────────────────────────
 
