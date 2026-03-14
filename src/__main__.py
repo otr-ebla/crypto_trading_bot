@@ -222,21 +222,59 @@ class BotEngine:
         ticker = self.exchange.fetch_ticker(symbol)
         current_price = ticker["last"]
 
-        # 4. Fetch sentiment (if enabled)
+        # 4. Fetch sentiment (free scraper first, NewsAPI as bonus)
         sentiment_signal: Optional[SentimentSignal] = None
-        if settings.sentiment.news_enabled:
-            try:
-                loop = asyncio.new_event_loop()
-                news_feed = loop.run_until_complete(fetch_news_for_symbol(symbol))
-                loop.close()
-                sentiment_signal = analyse_news(news_feed)
+        try:
+            from src.data.free_scraper import scrape_all
+            from src.data.news import NewsFeed, NewsArticle
+
+            scraped = scrape_all(symbol)
+            total_sources = len(scraped.articles) + len(scraped.reddit_posts)
+
+            if total_sources > 0:
+                self._log_activity(
+                    f"🌐 {symbol}: scraped {len(scraped.articles)} news articles "
+                    f"+ {len(scraped.reddit_posts)} Reddit posts (free, no API key)"
+                )
+
+                # Convert scraped articles into a NewsFeed for sentiment analysis
+                converted_articles = [
+                    NewsArticle(
+                        title=a.title,
+                        source=a.source,
+                        description=a.description,
+                        url=a.url,
+                        published_at=a.published_at,
+                    )
+                    for a in scraped.articles
+                ]
+                # Add Reddit post titles as pseudo-articles
+                for post in scraped.reddit_posts:
+                    converted_articles.append(
+                        NewsArticle(
+                            title=f"{post.title} [r/{post.subreddit} ↑{post.score}]",
+                            source=f"Reddit r/{post.subreddit}",
+                            description="",
+                            url=post.url,
+                            published_at=post.created_at,
+                        )
+                    )
+
+                combined_feed = NewsFeed(symbol=symbol, articles=converted_articles)
+                sentiment_signal = analyse_news(combined_feed)
+
                 if sentiment_signal.sample_size > 0:
                     self._log_activity(
                         f"📰 {symbol}: sentiment={sentiment_signal.direction} "
-                        f"(score={sentiment_signal.score:+.3f}, {sentiment_signal.sample_size} articles)"
+                        f"(score={sentiment_signal.score:+.3f}, "
+                        f"{sentiment_signal.sample_size} sources)"
                     )
-            except Exception as e:
-                self._log_activity(f"⚠️ {symbol}: sentiment fetch failed: {e}", "warning")
+                    # Log top headlines
+                    for hl in sentiment_signal.top_headlines[:3]:
+                        self._log_activity(f"   📄 {hl}", "dim")
+
+        except Exception as e:
+            self._log_activity(f"⚠️ {symbol}: sentiment scrape failed: {e}", "warning")
 
         # 5. Run strategy
         signal_result = self.strategy.evaluate(symbol, ohlcv, sentiment_signal)
