@@ -36,7 +36,7 @@ def _int(val: str | None, default: int = 0) -> int:
 
 @dataclass(frozen=True)
 class ExchangeConfig:
-    id: str = os.getenv("EXCHANGE_ID", "binance")
+    id: str = os.getenv("EXCHANGE_ID", "kucoin")
     api_key: str = os.getenv("EXCHANGE_API_KEY", "")
     api_secret: str = os.getenv("EXCHANGE_API_SECRET", "")
     sandbox: bool = _bool(os.getenv("EXCHANGE_SANDBOX"), default=True)
