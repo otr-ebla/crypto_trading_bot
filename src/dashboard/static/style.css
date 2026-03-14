@@ -728,4 +728,16 @@ body {
   .main { margin-left: 60px; }
   .ticker-strip { display: none; }
   html { font-size: 13px; }
+  
+  /* Fix Topbar for Mobile */
+  .topbar { padding: 0 0.8rem; }
+  #page-title { display: none; }
+  .topbar-right { gap: 0.5rem; width: 100%; justify-content: flex-end; }
+  .bot-controls { 
+    padding-right: 0.5rem; 
+    margin-right: 0.5rem; 
+    gap: 0.3rem; 
+  }
+  #bot-strategy { max-width: 100px; }
+  #last-update { display: none; }
 }
