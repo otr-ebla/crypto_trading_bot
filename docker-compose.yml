@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build: .
+    container_name: cryptobot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data   # Persist the sqlite database
+      - ./.env:/app/.env   # Load API keys and config
+    environment:
+      - PYTHONUNBUFFERED=1
