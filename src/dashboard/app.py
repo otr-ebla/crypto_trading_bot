@@ -90,6 +90,7 @@ def _get_trades(limit: int = 100, status: Optional[str] = None) -> List[Dict]:
                 "status": t.status,
                 "strategy": t.strategy,
                 "mode": t.mode,
+                "leverage": getattr(t, 'leverage', 1.0),
                 "stop_loss": t.stop_loss,
                 "take_profit": t.take_profit,
                 "notes": t.notes,

@@ -50,7 +50,7 @@ class BaseExecutor(ABC):
 
 
 class PaperExecutor(BaseExecutor):
-    """Paper trading executor — no real money at risk."""
+    """Paper trading executor — no real money at risk. Supports Margin & Shorting."""
 
     def __init__(self, starting_balance: Optional[float] = None) -> None:
         self.balance = starting_balance or settings.risk.paper_starting_balance
@@ -68,16 +68,22 @@ class PaperExecutor(BaseExecutor):
         strategy: str,
         stop_loss: Optional[float] = None,
         take_profit: Optional[float] = None,
+        leverage: float = 1.0,
     ) -> Trade:
-        cost = amount * price
-        if cost > self.balance:
-            logger.warning(
-                f"Insufficient balance: need ${cost:.2f}, have ${self.balance:.2f}"
-            )
-            amount = self.balance / price * 0.99  # use 99% of balance
-            cost = amount * price
+        notional_value = amount * price
+        margin_required = notional_value / leverage
 
-        self.balance -= cost
+        if margin_required > self.balance:
+            logger.warning(
+                f"Insufficient margin: need ${margin_required:.2f}, have ${self.balance:.2f}"
+            )
+            # Maximize available margin
+            margin_required = self.balance * 0.99
+            notional_value = margin_required * leverage
+            amount = notional_value / price
+
+        # Deduct margin from balance
+        self.balance -= margin_required
 
         trade = Trade(
             symbol=symbol,
@@ -89,6 +95,7 @@ class PaperExecutor(BaseExecutor):
             stop_loss=stop_loss,
             take_profit=take_profit,
             mode="paper",
+            leverage=leverage,
         )
 
         with get_db() as db:
@@ -97,8 +104,8 @@ class PaperExecutor(BaseExecutor):
             trade_id = trade.id
 
         logger.info(
-            f"📝 [Paper] Opened {side.upper()} {amount:.6f} {symbol} "
-            f"@{price:.2f} (SL={stop_loss}, TP={take_profit}) "
+            f"📝 [Paper] Opened {side.upper()} {leverage}x {amount:.6f} {symbol} "
+            f"@{price:.2f} (Margin: ${margin_required:.2f}) "
             f"Balance: ${self.balance:,.2f}"
         )
         return trade
@@ -109,9 +116,15 @@ class PaperExecutor(BaseExecutor):
         else:
             pnl = (trade.entry_price - price) * trade.amount
 
-        pnl_pct = (pnl / (trade.entry_price * trade.amount)) * 100 if trade.amount else 0
+        # Calculate isolated margin to return
+        notional_value = trade.amount * trade.entry_price
+        margin_used = notional_value / trade.leverage
 
-        self.balance += trade.amount * price  # return the position value
+        # PnL percentage is relative to the *margin used*
+        pnl_pct = (pnl / margin_used) * 100 if margin_used else 0
+
+        # Return margin + PnL to balance
+        self.balance += (margin_used + pnl)
 
         with get_db() as db:
             db_trade = db.get(Trade, trade.id)
@@ -126,7 +139,7 @@ class PaperExecutor(BaseExecutor):
 
         emoji = "✅" if pnl >= 0 else "❌"
         logger.info(
-            f"{emoji} [Paper] Closed {trade.side} {trade.symbol} "
+            f"{emoji} [Paper] Closed {trade.side} {trade.leverage}x {trade.symbol} "
             f"@{price:.2f} P&L: ${pnl:+.2f} ({pnl_pct:+.1f}%) "
             f"Reason: {reason} | Balance: ${self.balance:,.2f}"
         )
@@ -140,6 +153,8 @@ class PaperExecutor(BaseExecutor):
             return q.all()
 
     def get_portfolio_value(self) -> float:
+        # Balance is available cash. Portfolio value includes floating PnL of open trades.
+        # But for simplification, we return just the total balance (realised PnL)
         return self.balance
 
     def get_total_pnl(self) -> float:
@@ -162,8 +177,9 @@ class LiveExecutor(BaseExecutor):
         strategy: str,
         stop_loss: Optional[float] = None,
         take_profit: Optional[float] = None,
+        leverage: float = 1.0,
     ) -> Trade:
-        # Place market order
+        # Place market order (Spot only by default, requires Margin API setup for KuCoin shorting)
         order = self.exchange.place_order(symbol, side.lower(), amount)
 
         fill_price = order.get("average", order.get("price", price))
@@ -179,13 +195,14 @@ class LiveExecutor(BaseExecutor):
             stop_loss=stop_loss,
             take_profit=take_profit,
             mode="live",
+            leverage=leverage,
         )
 
         with get_db() as db:
             db.add(trade)
 
         logger.info(
-            f"🔴 [Live] Opened {side.upper()} {fill_amount:.6f} {symbol} "
+            f"🔴 [Live] Opened {side.upper()} {leverage}x {fill_amount:.6f} {symbol} "
             f"@{fill_price:.2f}"
         )
         return trade
@@ -202,7 +219,9 @@ class LiveExecutor(BaseExecutor):
         else:
             pnl = (trade.entry_price - fill_price) * trade.amount
 
-        pnl_pct = (pnl / (trade.entry_price * trade.amount)) * 100 if trade.amount else 0
+        # Note: Live balance syncs from exchange anyway, but we calculate PnL% via isolated margin
+        margin_used = (trade.amount * trade.entry_price) / trade.leverage
+        pnl_pct = (pnl / margin_used) * 100 if margin_used else 0
 
         with get_db() as db:
             db_trade = db.get(Trade, trade.id)
@@ -215,7 +234,7 @@ class LiveExecutor(BaseExecutor):
                 db_trade.notes = reason
 
         logger.info(
-            f"🔴 [Live] Closed {trade.side} {trade.symbol} "
+            f"🔴 [Live] Closed {trade.side} {trade.leverage}x {trade.symbol} "
             f"@{fill_price:.2f} P&L: ${pnl:+.2f} ({pnl_pct:+.1f}%)"
         )
         return trade

@@ -48,10 +48,11 @@ class Trade(Base):
     take_profit = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
     mode = Column(String(5), nullable=False, default="paper")  # paper / live
+    leverage = Column(Float, nullable=False, default=1.0)
 
     def __repr__(self) -> str:
         return (
-            f"<Trade {self.id} {self.side} {self.symbol} "
+            f"<Trade {self.id} {self.side} {self.leverage}x {self.symbol} "
             f"@{self.entry_price} → {self.exit_price} P&L={self.pnl}>"
         )
 

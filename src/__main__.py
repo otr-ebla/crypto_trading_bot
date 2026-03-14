@@ -329,11 +329,13 @@ class BotEngine:
             strategy=self.strategy.name,
             stop_loss=sl,
             take_profit=tp,
+            leverage=signal_result.leverage,
         )
 
+        lever_str = f" {signal_result.leverage}x" if signal_result.leverage > 1.0 else ""
         emoji = "🟢" if signal_result.direction == "BUY" else "🔴"
         self._log_activity(
-            f"{emoji} OPENED {signal_result.direction} {position_size:.6f} {symbol} "
+            f"{emoji} OPENED {signal_result.direction}{lever_str} {position_size:.6f} {symbol} "
             f"@${current_price:,.2f} (SL=${sl:,.2f} TP=${tp:,.2f})",
             "trade",
             {

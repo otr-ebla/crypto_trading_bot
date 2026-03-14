@@ -32,6 +32,7 @@ class TradeSignal:
     symbol: str
     direction: str  # "BUY" | "SELL" | "HOLD"
     confidence: float  # 0.0 – 1.0
+    leverage: float = 1.0  # 1.0x, 2.0x, 3.0x
     technical: Optional[TechnicalSignal] = None
     sentiment: Optional[SentimentSignal] = None
     weights: Dict[str, float] = field(default_factory=dict)
@@ -92,6 +93,7 @@ def aggregate(
             symbol=symbol,
             direction="HOLD",
             confidence=0.0,
+            leverage=1.0,
             technical=technical,
             sentiment=sentiment,
             weights=weights,
@@ -115,10 +117,19 @@ def aggregate(
 
     confidence = min(abs(composite), 1.0)
 
+    # Dynamic Leverage based on confidence
+    leverage = 1.0
+    if direction != "HOLD":
+        if confidence >= 0.80:
+            leverage = 3.0
+        elif confidence >= 0.60:
+            leverage = 2.0
+
     signal = TradeSignal(
         symbol=symbol,
         direction=direction,
         confidence=round(confidence, 4),
+        leverage=leverage,
         technical=technical,
         sentiment=sentiment,
         weights=norm_weights,
@@ -131,7 +142,7 @@ def aggregate(
 
     logger.info(
         f"[bold]{symbol}[/] composite signal: [bold]{direction}[/] "
-        f"(conf={confidence:.2f}, score={composite:.4f})"
+        f"{leverage}x (conf={confidence:.2f}, score={composite:.4f})"
     )
 
     return signal

@@ -259,48 +259,14 @@ function renderStats(s) {
   `;
 }
 
-// ══════════════════════════════════════════════════════════════
-// TICKERS
-// ══════════════════════════════════════════════════════════════
-function renderTickers(tickers) {
-  const strip = document.getElementById("ticker-strip");
-  strip.innerHTML = tickers.map(t => {
-    const pct = t.change_pct ?? 0;
-    const cls = pct >= 0 ? "positive" : "negative";
-    const sign = pct >= 0 ? "+" : "";
-    return `
-      <div class="ticker-item">
-        <span class="name">${(t.symbol || "").replace("/USDT", "")}</span>
-        <span class="price">$${fmtPrice(t.last)}</span>
-        <span class="change ${cls}">${sign}${pct?.toFixed(1) ?? 0}%</span>
-      </div>
-    `;
-  }).join("");
-}
-
-// ══════════════════════════════════════════════════════════════
-// DASHBOARD ACTIVE POSITIONS
-// ══════════════════════════════════════════════════════════════
-function renderDashOpenPositions(trades) {
-  const openTrades = trades.filter(t => t.status === "open");
-  const elCount = document.getElementById("open-positions-count");
-  if (elCount) elCount.textContent = openTrades.length;
-  
-  const el = document.getElementById("dash-open-positions");
-  if (!el) return;
-  
-  if (!openTrades.length) {
-    el.innerHTML = `<div class="loading" style="padding:1rem;">No active positions</div>`;
-    return;
-  }
-  
-  el.innerHTML = openTrades.map(t => {
+// ════════════════════════════════════════════════════════�  el.innerHTML = openTrades.map(t => {
     const sideCls = t.side === "BUY" ? "badge-buy" : "badge-sell";
     const amount = t.amount?.toFixed(6) ?? "";
+    const leverStr = t.leverage && t.leverage > 1 ? ` ${t.leverage}x` : "";
     return `
       <div class="trade-row">
         <span class="sym">${t.symbol.replace("/USDT","")}</span>
-        <span class="side badge ${sideCls}">${t.side}</span>
+        <span class="side badge ${sideCls}">${t.side}${leverStr}</span>
         <span class="amount" style="font-size:0.8rem;color:var(--text-3);">${amount}</span>
         <span class="pnl" style="font-weight:600;">@ $${fmtPrice(t.entry_price)}</span>
       </div>
@@ -328,6 +294,47 @@ function renderDashRecentHistory(trades) {
     const sideCls = t.side === "BUY" ? "badge-buy" : "badge-sell";
     const pnl = t.pnl >= 0 ? `<span class="positive">+$${fmt(t.pnl)}</span>` : `<span class="negative">-$${fmt(Math.abs(t.pnl))}</span>`;
     const time = t.exit_time ? new Date(t.exit_time).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    const leverStr = t.leverage && t.leverage > 1 ? ` ${t.leverage}x` : "";
+    return `
+      <div class="trade-row">
+        <span class="sym">${t.symbol.replace("/USDT","")}</span>
+        <span class="side badge ${sideCls}">${t.side}${leverStr}</span>
+        <span class="pnl">${pnl}</span>
+        <span class="time">${time}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════════════════
+// TRADES TABLE (full page)
+// ══════════════════════════════════════════════════════════════
+function renderTradesTable(trades) {
+  const tbody = document.getElementById("trades-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = trades.map(t => {
+    const sideBadge = t.side === "BUY" ? "badge-buy" : "badge-sell";
+    const statusBadge = t.status === "open" ? "badge-open" : "badge-closed";
+    const pnl = t.pnl != null ? `<span class="${t.pnl >= 0 ? 'positive' : 'negative'}">${t.pnl >= 0 ? '+' : ''}$${fmt(t.pnl)}</span>` : "—";
+    const pnlPct = t.pnl_pct != null ? `${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%` : "—";
+    const time = t.entry_time ? new Date(t.entry_time).toLocaleString() : "—";
+    const leverStr = t.leverage && t.leverage > 1 ? ` ${t.leverage}x` : "";
+    return `<tr>
+      <td>${t.id}</td>
+      <td style="font-weight:600">${t.symbol}</td>
+      <td><span class="badge ${sideBadge}">${t.side}${leverStr}</span></td>
+      <td>${t.amount?.toFixed(6) ?? "—"}</td>
+      <td>$${fmtPrice(t.entry_price)}</td>
+      <td>${t.exit_price ? '$' + fmtPrice(t.exit_price) : '—'}</td>
+      <td>${t.stop_loss ? '$' + fmtPrice(t.stop_loss) : '—'}</td>
+      <td>${t.take_profit ? '$' + fmtPrice(t.take_profit) : '—'}</td>
+      <td>${pnl}</td>
+      <td class="${t.pnl_pct >= 0 ? 'positive' : 'negative'}">${pnlPct}</td>
+      <td>${t.strategy}</td>
+      <td><span class="badge ${statusBadge}">${t.status}</span></td>
+      <td style="color:var(--text-3);font-size:0.85rem">${time}</td>
+    </tr>`;
+  }).join("");, day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
     return `
       <div class="trade-row">
         <span class="sym">${t.symbol.replace("/USDT","")}</span>
